@@ -44,8 +44,11 @@ function genCharacter(seed, forceArch, opts) {
     accessory: 'none', tie: null, walkSpeed: r.range(1.0, 1.4) * M, sway: r.range(.6, 1.3),
     face: { eye: r.int(0, 2), brow: r.int(0, 2), nose: r.int(0, 2), lips: false },
     heels: false, skirt: null,
+    // gait: how this particular body carries itself
+    gait: { slouch: r.range(-.06, .22), headTilt: r.range(-.12, .18), armSwing: r.range(.45, 1.5), stride: r.range(.8, 1.2),
+      bounce: r.range(.3, 1.8), cadence: r.range(.85, 1.2), kneeLift: r.range(.6, 1.4), sway: r.range(0, 1), idle: r.pick(['idle', 'idle', 'idleShift', 'pockets', 'idleLook']) },
   };
-  if (age > .7) { c.hair.color = r.pick(['#8c8c8c', '#d9d9d9', '#bfb8ae', '#e8e6e0']); c.walkSpeed *= .6; }
+  if (age > .7) { c.hair.color = r.pick(['#8c8c8c', '#d9d9d9', '#bfb8ae', '#e8e6e0']); c.walkSpeed *= .6; c.gait.slouch += .18; c.gait.stride *= .7; c.gait.armSwing *= .6; c.gait.bounce *= .5; c.gait.headTilt += .15; }
   // hair by gender/age
   if (gender === 'm') {
     c.hair.style = age > .6 && r.chance(.45) ? r.pick(['bald', 'buzz', 'side']) : r.weighted([['short', 5], ['buzz', 3], ['side', 3], ['curly', 2], ['afro', 1], ['long', 1], ['bun', 1], ['slick', 2], ['mohawk', .3], ['bald', 1]]);
@@ -66,7 +69,7 @@ function genCharacter(seed, forceArch, opts) {
       c.tie = gender === 'm' ? pick(['#7a1f2d', '#1f3a7a', '#3a6a3a', '#c9a24a', '#2b2b2b']) : null;
       c.accessory = r.weighted([['briefcase', 4], ['phone', 3], ['coffee', 3], ['none', 2], ['bag', 1]]);
       c.hat = r.chance(.08) ? 'fedora' : 'none';
-      c.walkSpeed *= 1.2;
+      c.walkSpeed *= 1.2; c.gait.slouch -= .08; c.gait.armSwing *= 1.2; c.gait.headTilt -= .08; c.gait.stride *= 1.1;
       break;
     case 'fancy':
       if (gender === 'f') {
@@ -81,7 +84,7 @@ function genCharacter(seed, forceArch, opts) {
         c.bottom = { type: 'slacks', color: c.top.color }; c.shoes = 'dress'; c.tie = pick(['#1c1a17', '#7a1f2d', '#c9a24a']);
         c.accessory = r.pick(['none', 'phone', 'none']); c.hair.style = r.pick(['slick', 'side', 'short']);
       }
-      c.walkSpeed *= .9;
+      c.walkSpeed *= .9; c.gait.slouch = -.1; c.gait.headTilt = -.12; c.gait.stride *= .85; c.gait.bounce *= .5; c.gait.sway = 1;
       break;
     case 'worker':
       c.top = { type: r.pick(['vest', 'shirt', 'jacket']), color: r.pick(['#e0a020', '#e07020', '#2f6f9f', '#5a5f6b']), color2: pick(CLOTH.neutral) };
@@ -93,7 +96,7 @@ function genCharacter(seed, forceArch, opts) {
       c.top = { type: r.pick(['tank', 'tshirt', 'tracksuit']), color: pick(CLOTH.bright), color2: pick(CLOTH.pale) };
       c.bottom = { type: r.pick(['shorts', 'sweatpants']), color: pick(CLOTH.neutral) };
       c.shoes = 'sneakers'; c.shoeColor = pick(CLOTH.bright); c.hat = r.chance(.3) ? 'capBack' : 'none';
-      c.hair.style = gender === 'f' ? 'ponytail' : c.hair.style; c.walkSpeed *= 2.4; c.run = true;
+      c.hair.style = gender === 'f' ? 'ponytail' : c.hair.style; c.walkSpeed *= 2.4; c.run = true; c.gait.armSwing = 1; c.gait.slouch = .1;
       break;
     case 'elder':
       c.top = { type: r.pick(['sweater', 'coat', 'shirt', 'blazer']), color: pick(CLOTH.neutral), color2: pick(CLOTH.pale) };
@@ -119,6 +122,7 @@ function genCharacter(seed, forceArch, opts) {
       c.bottom = { type: r.pick(['jeans', 'shorts', 'sweatpants', gender === 'f' ? 'skirt' : 'jeans']), color: pick(CLOTH.neutral) };
       c.shoes = 'sneakers'; c.shoeColor = pick(['#e8e3d6', '#1c1a17', '#b0413e']); c.accessory = r.pick(['backpack', 'backpack', 'phone', 'coffee']);
       c.hat = r.weighted([['none', 6], ['cap', 2], ['beanie', 1], ['capBack', 1]]);
+      c.gait.slouch += .12; c.gait.headTilt += .1; c.gait.idle = r.pick(['pockets', 'pockets', 'idleShift']);
       break;
     case 'casual':
       c.top = { type: r.pick(['tshirt', 'shirt', 'sweater', 'hoodie', gender === 'f' ? 'blouse' : 'tshirt']), color: pick(CLOTH.neutral.concat(CLOTH.bright)), color2: pick(CLOTH.pale) };
@@ -143,7 +147,7 @@ function genPlayer() {
   c.skin = '#e0ad86'; c.hair = { style: 'short', color: '#2c1d14' }; c.facial = 'stubble'; c.glasses = 'none';
   c.top = { type: 'hoodie', color: '#7a4a3a', color2: '#c9c6bc' }; c.bottom = { type: 'jeans', color: '#4a5a72' };
   c.shoes = 'sneakers'; c.shoeColor = '#e8e3d6'; c.hat = 'none'; c.accessory = 'none'; c.height = 1.78; c.build = 1.02; c.age = .3;
-  c.walkSpeed = 1.5 * M; c.isPlayer = true;
+  c.walkSpeed = 1.5 * M; c.isPlayer = true; c.gait = { slouch: .05, headTilt: .02, armSwing: 1, stride: 1, bounce: 1, cadence: 1, kneeLift: 1, sway: .3, idle: 'idleShift' };
   return c;
 }
 // The guy in the alley
@@ -152,6 +156,6 @@ function genCartMan() {
   c.skin = '#c98e66'; c.hair = { style: 'long', color: '#8c8c8c' }; c.facial = 'bigBeard'; c.age = .8;
   c.top = { type: 'rags', color: '#5a5245', color2: '#7c6f5a' }; c.bottom = { type: 'sweatpants', color: '#4f4a44' };
   c.shoes = 'workboots'; c.shoeColor = '#3f3a34'; c.hat = 'beanie'; c.hatColor = '#6e6152'; c.accessory = 'none';
-  c.height = 1.74; c.build = .95; c.walkSpeed = .7 * M; c.name = 'Cart guy';
+  c.height = 1.74; c.build = .95; c.walkSpeed = .7 * M; c.name = 'Cart guy'; c.gait.slouch = .28; c.gait.headTilt = .12;
   return c;
 }
