@@ -8,6 +8,9 @@ const POSE0 = { hipF: 0, kneeF: .06, hipB: 0, kneeB: .06, shF: 0, elF: .12, shB:
 const P = o => Object.assign({}, POSE0, o);
 const POSTURES = {
   idle: t => P({ bob: Math.sin(t * 2.2) * .6, shF: .04, shB: -.04, elF: .18 + Math.sin(t * 2.2) * .02 }),
+  idleShift: t => { const w = Math.sin(t * .7); return P({ bob: Math.sin(t * 2.2) * .6 + Math.abs(w) * 1.2, hipF: .12 * w + .04, hipB: -.1 * w - .04, kneeF: .06 + Math.max(0, w) * .18, kneeB: .06 + Math.max(0, -w) * .18, spine: -.03 * w, shF: .05, shB: -.05, elF: .16, elB: .16 }); },
+  pockets: t => P({ bob: Math.sin(t * 2.2) * .5, shF: -.35, elF: .55, shB: -.35, elB: .55, spine: .06, head: .04, hipF: .08, hipB: -.06 }),
+  idleLook: t => P({ bob: Math.sin(t * 2.2) * .6, shF: .04, shB: -.04, elF: .18, head: -.12 + Math.sin(t * .9) * .18, spine: -.02 }),
   walk: (t, ph) => { const s = Math.sin(ph * TAU), c = Math.cos(ph * TAU);
     return P({ hipF: s * .55, kneeF: Math.max(0, -c) * .9 + .08, hipB: -s * .55, kneeB: Math.max(0, c) * .9 + .08,
       shF: -s * .45, elF: .35 + Math.max(0, -s) * .3, shB: s * .45, elB: .35 + Math.max(0, s) * .3,
@@ -84,12 +87,13 @@ class Actor {
     this.t += dt;
     const spd = Math.hypot(this.vx, this.vy);
     this.moving = spd > 2;
-    if (this.moving) { this.phase = (this.phase + dt * spd / (this.h * .95)) % 1; if (Math.abs(this.vx) > 2) this.facing = sgn(this.vx); }
+    const g = this.spec.gait || { slouch: 0, headTilt: 0, armSwing: 1, stride: 1, bounce: 1, cadence: 1, kneeLift: 1, sway: 0, idle: 'idle' };
+    if (this.moving) { this.phase = (this.phase + dt * spd * g.cadence / (this.h * .95 * g.stride)) % 1; if (Math.abs(this.vx) > 2) this.facing = sgn(this.vx); }
     let target;
     if (this.emote) { this.emote.t += dt; if (this.emote.t > this.emote.dur) { this.emote = null; this.setExpr('neutral'); } }
     if (this.emote && !this.moving) target = POSTURES[this.emote.name](this.t);
     else if (this.moving) target = (this.spec.run || spd > this.h * 1.1 ? POSTURES.run : POSTURES.walk)(this.t, this.phase);
-    else target = POSTURES[this.posture] ? POSTURES[this.posture](this.t) : POSTURES.idle(this.t);
+    else target = POSTURES[this.posture === 'idle' ? g.idle : this.posture] ? POSTURES[this.posture === 'idle' ? g.idle : this.posture](this.t) : POSTURES.idle(this.t);
     if (this.emote && this.moving) { const e = POSTURES[this.emote.name](this.t); target.shF = e.shF; target.elF = e.elF; target.shB = e.shB; target.elB = e.elB; target.head = e.head; }
     // accessory hand overrides when not emoting
     if (!this.emote) {
@@ -99,6 +103,9 @@ class Actor {
       if (a === 'cane') { target.shF = .25; target.elF = .2; target.spine = Math.max(target.spine, .12); target.head = .1; }
       if (a === 'newspaper') { target.shB = .1; target.elB = 1.5; }
     }
+    // personal gait: stride, arm swing, bounce, slouch, head carriage
+    if (this.moving && !this.emote) { target.hipF *= g.stride; target.hipB *= g.stride; target.kneeF = (target.kneeF - .08) * g.kneeLift + .08; target.kneeB = (target.kneeB - .08) * g.kneeLift + .08; target.shF *= g.armSwing; target.shB *= g.armSwing; target.elF = .12 + (target.elF - .12) * g.armSwing; target.elB = .12 + (target.elB - .12) * g.armSwing; target.bob *= g.bounce; target.spine += g.sway * Math.sin(this.phase * TAU * 2) * .02; }
+    if (!target.sit) { target.spine += g.slouch * (this.emote ? .4 : 1); target.head += g.headTilt * (this.emote ? .4 : 1); if (g.slouch > .1) { target.shF += g.slouch * .3; target.shB += g.slouch * .3; } }
     const k = 1 - Math.pow(0.0005, dt);
     this.pose = blendPose(this.pose, target, k);
     // expression blend
@@ -327,7 +334,7 @@ class Actor {
       case 'side': ctx.moveTo(-R * .95, R * .1); ctx.quadraticCurveTo(-R * 1.05, -R * 1.15, R * .1, -R * 1.08); ctx.quadraticCurveTo(R * 1.05, -R * 1.0, R * 1.0, -R * .3); ctx.quadraticCurveTo(R * .95, -R * .6, R * .4, -R * .7); ctx.quadraticCurveTo(-R * .2, -R * .6, -R * .6, -R * .1); ctx.closePath(); inkFill(ctx, hc); break;
       case 'slick': ctx.moveTo(-R * .95, R * .1); ctx.quadraticCurveTo(-R * 1.3, -R * 1.05, R * .3, -R * 1.05); ctx.quadraticCurveTo(R * 1.0, -R * 1.0, R * .95, -R * .6); ctx.quadraticCurveTo(R * .3, -R * .78, -R * .6, -R * .2); ctx.closePath(); inkFill(ctx, hc); hatch(ctx, -R * .8, -R * 1.0, R * 1.4, R * .5, 4, -.2, .35); break;
       case 'curly': for (let i = 0; i < 7; i++) { const a = Math.PI * (1.0 + i / 6 * 1.05); ctx.moveTo(Math.cos(a) * R * .85 + R * .3, Math.sin(a) * R * .85); ctx.arc(Math.cos(a) * R * .85, Math.sin(a) * R * .92, R * .32, 0, TAU); } inkFill(ctx, hc); break;
-      case 'afro': ctx.arc(-R * .1, -R * .3, R * 1.45, 0, TAU); inkFill(ctx, hc); ctx.beginPath(); ctx.ellipse(0, 0, R * .95, R, 0, -Math.PI * .5, Math.PI * .5); ctx.lineTo(R * .1, -R * .95); inkFill(ctx, s.skin); hatch(ctx, -R * 1.2, -R * 1.5, R * 1.2, R * 1.4, 5, .6, .25); break;
+      case 'afro': ctx.moveTo(-R * .95, R * .35); ctx.quadraticCurveTo(-R * 1.6, -R * .2, -R * 1.2, -R * .9); ctx.quadraticCurveTo(-R * .6, -R * 1.65, R * .2, -R * 1.55); ctx.quadraticCurveTo(R * 1.1, -R * 1.5, R * 1.15, -R * .6); ctx.quadraticCurveTo(R * .6, -R * .75, R * .1, -R * .6); ctx.quadraticCurveTo(-R * .5, -R * .45, -R * .7, R * .3); ctx.closePath(); inkFill(ctx, hc); hatch(ctx, -R * 1.1, -R * 1.3, R * .9, R * 1.0, 4, .6, .25); break;
       case 'long': ctx.moveTo(-R * .95, R * .3); ctx.quadraticCurveTo(-R * 1.1, -R * 1.2, R * .2, -R * 1.08); ctx.quadraticCurveTo(R * 1.0, -R * 1.0, R * 1.0, -R * .35); ctx.quadraticCurveTo(R * .5, -R * .7, -R * .1, -R * .5); ctx.quadraticCurveTo(-R * .6, -R * .3, -R * .75, R * .5); ctx.closePath(); inkFill(ctx, hc); break;
       case 'bob': ctx.moveTo(-R * .95, R * .3); ctx.quadraticCurveTo(-R * 1.1, -R * 1.2, R * .2, -R * 1.08); ctx.quadraticCurveTo(R * 1.0, -R * 1.0, R * 1.0, -R * .35); ctx.quadraticCurveTo(R * .6, -R * .65, R * .1, -R * .55); ctx.quadraticCurveTo(-R * .5, -R * .4, -R * .75, R * .5); ctx.closePath(); inkFill(ctx, hc); break;
       case 'ponytail': ctx.moveTo(-R * .95, R * .1); ctx.quadraticCurveTo(-R * 1.05, -R * 1.15, R * .2, -R * 1.08); ctx.quadraticCurveTo(R * 1.0, -R * 1.0, R * .95, -R * .45); ctx.quadraticCurveTo(R * .3, -R * .7, -R * .3, -R * .5); ctx.lineTo(-R * .7, R * .1); ctx.closePath(); inkFill(ctx, hc); break;
