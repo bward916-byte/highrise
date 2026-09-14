@@ -28,12 +28,11 @@ class Crowd {
     for (const a of this.npcs) {
       if (a.wait > 0) { a.wait -= dt; a.vx = a.vy = 0; if (a.wait <= 0 && !a.emote) { a.posture = 'idle'; } }
       else {
-        a.vx = a.dir * a.spec.walkSpeed; a.vy = 0;
+        a.vx = a.dir * a.spec.walkSpeed; a.vy = 0; a.x += a.vx * dt;
         if ((a.dir > 0 && a.x > x1) || (a.dir < 0 && a.x < x0)) a.dir *= -1;
         // stop and do something occasionally
         if (Math.random() < dt * .04) { a.wait = 1.5 + Math.random() * 4; a.vx = 0; const em = a.spec.accessory === 'phone' ? 'phone' : ['think', 'phone', 'idle', 'crossArms', 'handsHips', 'shrug', 'wave'][Math.floor(Math.random() * 7)]; if (em !== 'idle') a.setEmote(em, a.wait); }
         // sidestep others a little
-        if (Math.random() < dt * .5) a.dir = a.dir; 
       }
       // face the player when he's close and talking
       if (player && Math.abs(player.x - a.x) < 70 && Math.abs(player.y - a.y) < 30 && player.talking) { a.facing = sgn(player.x - a.x); a.vx = 0; a.wait = Math.max(a.wait, .6); }
